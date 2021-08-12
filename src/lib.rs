@@ -1,39 +1,38 @@
 #![allow(dead_code)]
+use std::ops::Div;
 
-use math::{angle::Angle, percent::Percent};
+use bevy::math::Vec2;
+use lazy_static::lazy_static;
+use math::angle::Angle;
 
 pub mod math {
     pub mod angle;
     pub mod percent;
-    pub mod vec2x;
-}
-
-pub mod layers {
-    pub mod trail_map;
+    pub mod vec2ext;
 }
 
 pub mod agent;
 pub mod blur;
+pub mod board;
 pub mod cell;
+pub mod timestep;
+pub mod triplet;
 
-// Canvas dimensions
-pub const WIDTH: u16 = 180;
-pub const HEIGHT: u16 = 180;
-
-pub const MIN_X: i16 = WIDTH as i16 / -2;
-pub const MAX_X: i16 = WIDTH as i16 / 2;
-pub const MIN_Y: i16 = HEIGHT as i16 / -2;
-pub const MAX_Y: i16 = HEIGHT as i16 / 2;
-
-const TIME_STEP: f32 = 1.0 / 60.0;
-
-/// Vertical and horizontal dimension of a cell in pixels
-const CELL_SIZE: u16 = 4;
+lazy_static! {
+    pub static ref DIMENSIONS: Vec2 = Vec2::new(320.0, 320.0);
+    pub static ref MIN: Vec2 = DIMENSIONS.div(-2.0);
+    pub static ref MAX: Vec2 = DIMENSIONS.div(2.0);
+    pub static ref AGENT_COUNT: u32 = (DIMENSIONS.x * DIMENSIONS.y * P) as u32;
+    /// Vertical and horizontal dimension of a cell in pixels
+    pub static ref CELL_SIZE: Vec2 = Vec2::splat(1.0);
+}
 
 /// Population as percentage of image area
-const P: Percent = Percent(15.0);
+const P: f32 = 0.0025;
 /// Diffusion kernel size
 const DIFF_K: u8 = 3;
+/// Trail-map chemoattractant diffusion decay factor
+const DECAY_T: f32 = 0.1;
 /// Pre-pattern stimuli projection weight
 const W_PROJ: f32 = 0.1;
 /// Front-left and front-right sensor angle from forward position

@@ -1,110 +1,104 @@
-use std::f32::consts::TAU;
-
-use bevy::{math::Vec2, prelude::*};
-use rand::Rng;
+use bevy::{
+    math::Vec2,
+    prelude::*,
+    tasks::{AsyncComputeTaskPool, ComputeTaskPool, TaskPoolBuilder},
+};
+use rand::{thread_rng, Rng};
 
 use crate::{
-    cell::Cell,
-    layers::trail_map::TrailMap,
-    math::{angle::Angle, vec2x::produce_in_direction},
-    DEP_T, HEIGHT, RA, SA, SO, SS, SW, WIDTH,
+    board::Board,
+    cell::{Cell, CellMaterials},
+    math::{angle::Angle, vec2ext::Vec2Ext},
+    triplet::{Prong, Triplet},
+    AGENT_COUNT, CELL_SIZE, DEP_T, MAX, MIN, RA, SA, SO, SS,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct Agent {
-    pub heading: Angle,
+    pub dir: Angle,
     pub pos: Vec2,
-    /// Angle between straight-ahead sensor and side-sensor
-    pub sensor_angle: Angle,
-    pub sensor_offset_distance: f32,
-    pub sensor_width: u8,
-    pub rotation_angle: Angle,
-    pub step_size: f32,
-    pub deposition_size: u8,
 }
 
 impl Default for Agent {
     fn default() -> Self {
         let mut rng = rand::thread_rng();
         Agent {
-            heading: Angle::Radians(rng.gen_range(0.0..TAU)),
+            dir: rng.gen::<Angle>(),
             pos: Vec2::new(
-                rng.gen_range(0.0..WIDTH as f32),
-                rng.gen_range(0.0..HEIGHT as f32),
+                rng.gen_range(MIN.x..MAX.x).into(),
+                rng.gen_range(MIN.y..MAX.y).into(),
             ),
-            sensor_angle: SA,
-            sensor_offset_distance: SO,
-            sensor_width: SW,
-            rotation_angle: RA,
-            step_size: SS,
-            deposition_size: DEP_T,
         }
-    }
-}
-
-enum Direction {
-    Left,
-    Middle,
-    Right,
-}
-
-struct SensorDirections<'a> {
-    pub left: Option<&'a Cell>,
-    pub middle: Option<&'a Cell>,
-    pub right: Option<&'a Cell>,
-}
-
-impl<'a> SensorDirections<'a> {
-    pub fn max(&self) -> (bool, bool, bool) {
-        match self.values() {
-            (l, m, r) if l >= m && l >= r => (true, false, false),
-            (l, m, r) if m >= l && m >= r => (false, true, false),
-            (l, m, r) if r >= m && r >= l => (false, false, true),
-            _ => (false, false, false),
-        }
-    }
-
-    pub fn values(&self) -> (u8, u8, u8) {
-        let (l, m, r) = (self.left, self.middle, self.right);
-        (
-            l.unwrap_or(&Cell::default()).value,
-            m.unwrap_or(&Cell::default()).value,
-            r.unwrap_or(&Cell::default()).value,
-        )
     }
 }
 
 impl Agent {
-    /// Detect values using this Agent's sensors.
-    fn sense_and_move(mut q: Query<&mut Agent>, trail_map: ResMut<TrailMap>) {
-        q.iter_mut().for_each(|mut agent| {
-            let pos = &agent.pos;
-            let d = agent.sensor_offset_distance;
+    /// Returns FL, F and FR sensor angular directions
+    fn sensor_directions(&self) -> (Angle, Angle, Angle) {
+        (self.dir - SA, self.dir, self.dir + SA)
+    }
 
-            let (left_heading, mid_heading, right_heading) = (
-                agent.heading - agent.sensor_angle,
-                agent.heading,
-                agent.heading + agent.sensor_angle,
+    pub fn initialize(mut commands: Commands) {
+        for _ in 0..*AGENT_COUNT {
+            commands.spawn().insert(Agent::default());
+        }
+    }
+
+    pub fn sense_and_move(
+        async_pool: Res<AsyncComputeTaskPool>,
+        board: Res<Board>,
+        cell_mats: Res<CellMaterials>,
+        mut agent_query: Query<&'static mut Agent>,
+        mut cell_query: Query<&'static mut Cell>,
+    ) {
+        let pool = TaskPoolBuilder::new()
+            .thread_name("AgentThreadPool".to_string())
+            .build();
+
+        agent_query.for_each_mut(|mut agent| {
+            let (left_heading, mid_heading, right_heading) = agent.sensor_directions();
+
+            // TODO: Extract to function
+            let left = agent.pos.produce_in_direction(left_heading, SO).as_i32();
+            let mid = agent.pos.produce_in_direction(mid_heading, SO).as_i32();
+            let right = agent.pos.produce_in_direction(right_heading, SO).as_i32();
+
+            let triplet: Triplet<Option<&Entity>> = Triplet(
+                board.map.get(&left),
+                board.map.get(&mid),
+                board.map.get(&right),
             );
 
-            let left = produce_in_direction(pos, left_heading, d);
-            let mid = produce_in_direction(pos, mid_heading, d);
-            let right = produce_in_direction(pos, right_heading, d);
+            let prong = triplet.max();
 
-            let directions = SensorDirections {
-                left: trail_map.find_by_coords(left.x as i32, left.y as i32),
-                middle: trail_map.find_by_coords(mid.x as i32, mid.y as i32),
-                right: trail_map.find_by_coords(right.x as i32, right.y as i32),
-            };
+            match prong {
+                Prong::Left => agent.dir = agent.dir - RA,
+                Prong::Middle => agent.dir = agent.dir,
+                Prong::Right => agent.dir = agent.dir + RA,
+            }
 
-            let new_heading = match directions.max() {
-                (true, false, false) => left_heading,
-                (false, true, false) => mid_heading,
-                (false, false, true) => right_heading,
-                _ => left_heading,
-            };
+            let mut new_pos = agent.pos.produce_in_direction(agent.dir, SS);
+            let mut new_dir = agent.dir;
 
-            agent.pos = produce_in_direction(&agent.pos, new_heading, agent.step_size)
+            while !&new_pos.is_in_area(&MAX) {
+                new_dir = thread_rng().gen::<Angle>();
+                new_pos = new_pos.produce_in_direction(new_dir, SS);
+            }
+
+            agent.dir = new_dir;
+            agent.pos = new_pos;
+
+            if let Some(ent) = board.map.get(&new_pos.as_i32()) {
+                if let Ok(mut cell) = cell_query.get_component_mut::<Cell>(*ent) {
+                    cell.value += DEP_T
+                }
+            }
         });
+
+        // pool.scope(|scope| {
+        //     for i in 0..128 {
+        //         scope.spawn(async move {});
+        //     }
+        // });
     }
 }

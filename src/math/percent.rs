@@ -6,3 +6,10 @@ impl Into<f32> for Percent {
         self.0 / 100f32
     }
 }
+
+impl Into<u32> for Percent {
+    fn into(self) -> u32 {
+        let prim: f32 = self.into();
+        prim as u32
+    }
+}

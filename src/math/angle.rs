@@ -1,3 +1,7 @@
+use std::f32::consts::TAU;
+
+use rand::{Rng, distributions::Standard, prelude::Distribution};
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Angle {
     Degrees(f32),
@@ -39,5 +43,11 @@ impl std::ops::Sub for Angle {
             Angle::Degrees(deg) => Angle::Degrees(deg - rhs.to_degrees()),
             Angle::Radians(rad) => Angle::Radians(rad - rhs.to_radians()),
         }
+    }
+}
+
+impl Distribution<Angle> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Angle {
+        Angle::Radians(rng.gen_range(0f32..TAU))
     }
 }
