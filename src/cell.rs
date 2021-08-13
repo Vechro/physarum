@@ -1,16 +1,17 @@
+use arrayvec::ArrayVec;
 use bevy::{math::IVec2, prelude::*};
 use lazy_static::lazy_static;
 
 use crate::board::Board;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Cell<'a> {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Cell {
     pub pos: IVec2,
     pub value: u8,
-    pub neighbors: [Option<&'a Entity>; 8],
+    pub neighbors: ArrayVec<Entity, 8>,
 }
 
-impl PartialOrd for Cell<'_> {
+impl PartialOrd for Cell {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.value.cmp(&other.value))
     }
@@ -25,20 +26,22 @@ lazy_static! {
     ];
 }
 
-impl Cell<'_> {
+impl Cell {
     /// Neighbors must be added manually.
     pub fn new(pos: IVec2) -> Self {
         Self {
             pos,
             value: 0,
-            neighbors: [None; 8],
+            neighbors: ArrayVec::new(),
         }
     }
 
     /// Call this after you've populated the board
     pub fn populate_neighbors(&self, board: &Board) {
-        for (rel_pos, mut _neighbor) in RELATIVE_POSITIONS.iter().zip(self.neighbors) {
-            _neighbor = board.map.get(&(self.pos + *rel_pos));
+        for (rel_pos, mut _neighbor) in RELATIVE_POSITIONS.iter().zip(&self.neighbors) {
+            if let Some(entity) = board.map.get(&(self.pos + *rel_pos)) {
+                _neighbor = entity
+            }
         }
     }
 
@@ -63,4 +66,10 @@ impl FromWorld for CellMaterials {
                 .collect(),
         )
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CellUpdateEvent {
+    pub cell_id: Entity,
+    pub increment_by: u8,
 }

@@ -1,11 +1,5 @@
 use bevy::{core::FixedTimestep, prelude::*};
-use physarum::{
-    agent::Agent,
-    board::Board,
-    cell::CellMaterials,
-    timestep::{FixedUpdateStage, LABEL_TIMESTEP},
-    DIMENSIONS,
-};
+use physarum::{DIMENSIONS, agent::Agent, board::Board, cell::{CellMaterials, CellUpdateEvent}, timestep::{FixedUpdateStage, LABEL_TIMESTEP}};
 
 fn main() {
     App::new()
@@ -19,6 +13,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(1.0, 1.0, 1.0)))
         .init_resource::<CellMaterials>()
         .init_resource::<Board>()
+        .add_event::<CellUpdateEvent>()
         .add_startup_system(setup)
         .add_startup_system(Board::initialize)
         .add_startup_system(Board::register_neighbors)
