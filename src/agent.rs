@@ -1,13 +1,9 @@
-use bevy::{
-    math::Vec2,
-    prelude::*,
-    tasks::{AsyncComputeTaskPool, ComputeTaskPool, TaskPoolBuilder},
-};
+use bevy::{app::Events, ecs::system::Command, math::Vec2, prelude::*, tasks::{AsyncComputeTaskPool, ComputeTaskPool, TaskPoolBuilder}};
 use rand::{thread_rng, Rng};
 
 use crate::{
     board::Board,
-    cell::{Cell, CellMaterials},
+    cell::{Cell, CellMaterials, CellUpdateEvent},
     math::{angle::Angle, vec2ext::Vec2Ext},
     triplet::{Prong, Triplet},
     AGENT_COUNT, CELL_SIZE, DEP_T, MAX, MIN, RA, SA, SO, SS,
@@ -45,17 +41,17 @@ impl Agent {
     }
 
     pub fn sense_and_move(
-        async_pool: Res<AsyncComputeTaskPool>,
-        board: Res<Board>,
+        pool: Res<ComputeTaskPool>,
+        board: &'static Res<Board>,
         cell_mats: Res<CellMaterials>,
-        mut agent_query: Query<&'static mut Agent>,
-        mut cell_query: Query<&'static mut Cell>,
+        mut commands: Commands,
+        mut agent_query: Query<&mut Agent>,
+        // mut event_writer: EventWriter<CellUpdateEvent>,
     ) {
-        let pool = TaskPoolBuilder::new()
-            .thread_name("AgentThreadPool".to_string())
-            .build();
+        let mut events = Events::<CellUpdateEvent>::default();
 
-        agent_query.for_each_mut(|mut agent| {
+        agent_query.par_for_each_mut(&pool, 64, |mut agent| {
+            // lots of calculating
             let (left_heading, mid_heading, right_heading) = agent.sensor_directions();
 
             // TODO: Extract to function
@@ -77,6 +73,7 @@ impl Agent {
                 Prong::Right => agent.dir = agent.dir + RA,
             }
 
+            let old_pos = agent.pos;
             let mut new_pos = agent.pos.produce_in_direction(agent.dir, SS);
             let mut new_dir = agent.dir;
 
@@ -88,17 +85,18 @@ impl Agent {
             agent.dir = new_dir;
             agent.pos = new_pos;
 
-            if let Some(ent) = board.map.get(&new_pos.as_i32()) {
-                if let Ok(mut cell) = cell_query.get_component_mut::<Cell>(*ent) {
-                    cell.value += DEP_T
-                }
+            // done with calculating! the agent has been moved into the new position,
+            // now the old position must leave a trace of it on the grid, by updating the relevant cell
+
+            if let Some(ent) = board.map.get(&old_pos.as_i32()) {
+                // if let Ok(mut cell) = cell_query.get_component_mut::<Cell>(*ent) {
+                //     cell.value += DEP_T;
+                // }
+                events.send(CellUpdateEvent {
+                    cell_id: *ent,
+                    increment_by: DEP_T,
+                });
             }
         });
-
-        // pool.scope(|scope| {
-        //     for i in 0..128 {
-        //         scope.spawn(async move {});
-        //     }
-        // });
     }
 }
