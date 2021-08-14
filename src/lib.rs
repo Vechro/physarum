@@ -19,7 +19,7 @@ pub mod timestep;
 pub mod triplet;
 
 lazy_static! {
-    pub static ref DIMENSIONS: Vec2 = Vec2::new(320.0, 320.0);
+    pub static ref DIMENSIONS: Vec2 = Vec2::new(160.0, 160.0);
     pub static ref MIN: Vec2 = DIMENSIONS.div(-2.0);
     pub static ref MAX: Vec2 = DIMENSIONS.div(2.0);
     pub static ref AGENT_COUNT: u32 = (DIMENSIONS.x * DIMENSIONS.y * P) as u32;

@@ -1,9 +1,6 @@
 use bevy::{math::IVec2, prelude::*, utils::AHashExt, utils::HashMap};
 
-use crate::{
-    cell::{Cell, CellMaterials},
-    CELL_SIZE, DIMENSIONS, MAX, MIN,
-};
+use crate::{cell::Cell, CELL_SIZE, DIMENSIONS, MAX, MIN};
 
 #[derive(Debug, Clone)]
 pub struct Board {
@@ -39,10 +36,15 @@ impl Board {
     }
 
     pub fn initialize(
-        mut board: ResMut<&'static mut Board>,
+        mut board: ResMut<Board>,
         mut commands: Commands,
-        cell_mats: Res<CellMaterials>,
+        mut mats: ResMut<Assets<ColorMaterial>>,
     ) {
+        let white = mats.add(ColorMaterial {
+            color: Color::rgba_u8(0, 0, 0, 0),
+            ..Default::default()
+        });
+
         for x in MIN.x as i32..MAX.x as i32 {
             for y in MIN.y as i32..MAX.y as i32 {
                 let pos = IVec2::new(x, y);
@@ -53,7 +55,10 @@ impl Board {
 
                 entity_c
                     .insert_bundle(SpriteBundle {
-                        material: cell_mats.0[0].clone(),
+                        material: mats.add(ColorMaterial {
+                            color: Color::rgba_u8(0, 0, 0, 0),
+                            ..Default::default()
+                        }),
                         transform: Transform::from_translation(pos.as_f32().extend(0.0)),
                         sprite: Sprite::new(*CELL_SIZE),
                         ..Default::default()
@@ -63,7 +68,7 @@ impl Board {
         }
     }
 
-    pub fn register_neighbors(board: Res<&'static Board>, mut cell_q: Query<&'static mut Cell>) {
+    pub fn register_neighbors(board: Res<Board>, mut cell_q: Query<&mut Cell>) {
         cell_q.for_each_mut(|cell| {
             cell.populate_neighbors(&board);
         })

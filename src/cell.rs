@@ -1,5 +1,5 @@
 use arrayvec::ArrayVec;
-use bevy::{math::IVec2, prelude::*};
+use bevy::{app::Events, math::IVec2, prelude::*};
 use lazy_static::lazy_static;
 
 use crate::board::Board;
@@ -53,23 +53,49 @@ impl Cell {
     // ) {
     //     cell_query.for_each_mut(|mut cell| {})
     // }
-}
 
-pub struct CellMaterials(pub Vec<Handle<ColorMaterial>>);
+    pub fn update_listener(
+        mut events: EventReader<CellUpdateEvent>,
+        mut q: Query<(&mut Cell, &Handle<ColorMaterial>)>,
+        // cell_mats: ResMut<CellMaterials>,
+        mut mats: ResMut<Assets<ColorMaterial>>,
+    ) {
+        for cell_update_event in events.iter() {
+            if let Ok(mut cell) = q.get_component_mut::<Cell>(cell_update_event.cell_id) {
+                let val = cell.value.saturating_add(cell_update_event.increment_by);
+                cell.value = val;
 
-impl FromWorld for CellMaterials {
-    fn from_world(world: &mut World) -> Self {
-        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
-        CellMaterials(
-            (0..=255)
-                .map(|v: u8| materials.add(Color::rgba_u8(0, 0, 0, v).into()))
-                .collect(),
-        )
+                if let Ok(mat_handle) =
+                    q.get_component::<Handle<ColorMaterial>>(cell_update_event.cell_id)
+                {
+                    if let Some(mut m) = mats.get_mut(mat_handle) {
+                        m.color = Color::rgba_u8(0, 0, 0, val);
+                    }
+                }
+            }
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// pub struct CellMaterials(pub Vec<Handle<ColorMaterial>>);
+
+// impl FromWorld for CellMaterials {
+//     fn from_world(world: &mut World) -> Self {
+//         let mut materials =
+// world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
+//         CellMaterials(
+//             (0..=255)
+//                 .map(|v: u8| materials.add(Color::rgba_u8(0, 0, 0,
+// v).into()))                 .collect(),
+//         )
+//     }
+// }
+
+#[derive(Debug, Clone, Copy)]
 pub struct CellUpdateEvent {
     pub cell_id: Entity,
     pub increment_by: u8,
 }
+
+#[derive(Debug, Default)]
+pub struct CellUpdateEventCollection(pub Events<CellUpdateEvent>);
