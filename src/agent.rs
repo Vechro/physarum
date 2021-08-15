@@ -81,18 +81,11 @@ impl Agent {
             // now the old position must leave a trace of it on the grid,
             // by updating the relevant cell
 
-            // println!("ag. pos i32: {:?}", &agent.pos.as_i32());
-
             if let Some(ent) = board.map.get(&agent.pos.as_i32()) {
-                // if let Ok(mut cell) = cell_query.get_component_mut::<Cell>(*ent) {
-                //     cell.value += DEP_T;
-                // }
                 events.0.send(CellUpdateEvent {
                     cell_id: *ent,
                     increment_by: DEP_T,
                 });
-
-                // println!("events: {:?}", &events.0.is_empty());
             }
 
             agent.pos = new_pos;

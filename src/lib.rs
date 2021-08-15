@@ -19,16 +19,16 @@ pub mod timestep;
 pub mod triplet;
 
 lazy_static! {
-    pub static ref DIMENSIONS: Vec2 = Vec2::new(160.0, 160.0);
+    pub static ref DIMENSIONS: Vec2 = Vec2::new(320.0, 320.0);
     pub static ref MIN: Vec2 = DIMENSIONS.div(-2.0);
     pub static ref MAX: Vec2 = DIMENSIONS.div(2.0);
     pub static ref AGENT_COUNT: u32 = (DIMENSIONS.x * DIMENSIONS.y * P) as u32;
     /// Vertical and horizontal dimension of a cell in pixels
-    pub static ref CELL_SIZE: Vec2 = Vec2::splat(1.0);
+    pub static ref CELL_SIZE: Vec2 = Vec2::splat(4.0);
 }
 
 /// Population as percentage of image area
-const P: f32 = 0.0025;
+const P: f32 = 0.005;
 /// Diffusion kernel size
 const DIFF_K: u8 = 3;
 /// Trail-map chemoattractant diffusion decay factor
