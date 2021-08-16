@@ -37,7 +37,7 @@ impl Agent {
     }
 
     pub fn initialize(mut commands: Commands) {
-        for _ in 0..*AGENT_COUNT {
+        for _ in 0..256 {
             commands
                 .spawn()
                 .insert(Agent::default())
@@ -50,7 +50,7 @@ impl Agent {
         board: Res<Board>,
         mut query: Query<(&mut Agent, &mut CellUpdateEventCollection)>,
     ) {
-        query.par_for_each_mut(&pool, 32, |(mut agent, mut events)| {
+        query.par_for_each_mut(&pool, 16, |(mut agent, mut events)| {
             let (left_heading, mid_heading, right_heading) = agent.sensor_directions();
 
             // TODO: Extract to function
@@ -101,12 +101,8 @@ impl Agent {
                 .iter_mut()
                 .fold(Vec::<CellUpdateEvent>::new(), |mut accum, mut events| {
                     accum.extend::<Vec<CellUpdateEvent>>(events.0.drain().collect());
-                    // println!("{:?}", &accum);
                     accum
                 });
-
-        // println!("batch len: {:?}", batch.len());
-
         event_writer.send_batch(batch.into_iter());
     }
 }

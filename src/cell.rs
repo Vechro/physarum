@@ -66,7 +66,7 @@ impl Cell {
                 if let Ok(mut mat_handle) =
                     q.get_component_mut::<Handle<ColorMaterial>>(cell_update_event.cell_id)
                 {
-                    *mat_handle = mats.0[val as usize].clone();
+                    *mat_handle = mats.0[val.saturating_add(50) as usize].clone();
                 }
             }
         }

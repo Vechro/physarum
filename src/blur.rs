@@ -1,5 +1,3 @@
-// use crate::{layers::trail_map::TrailMap, HEIGHT, WIDTH};
-
 // fn blur(radius: u8, src: &TrailMap) -> TrailMap {
 //     let mut dest: TrailMap = Default::default();
 
