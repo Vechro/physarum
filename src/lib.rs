@@ -7,7 +7,6 @@ use math::angle::Angle;
 
 pub mod math {
     pub mod angle;
-    pub mod percent;
     pub mod vec2ext;
 }
 
@@ -23,11 +22,11 @@ lazy_static! {
     pub static ref MAX: Vec2 = DIMENSIONS.div(2.0);
     pub static ref AGENT_COUNT: u32 = (DIMENSIONS.x * DIMENSIONS.y * P) as u32;
     /// Vertical and horizontal dimension of a cell in pixels
-    pub static ref CELL_SIZE: Vec2 = Vec2::splat(16.0);
+    pub static ref CELL_SIZE: Vec2 = Vec2::splat(1.0);
 }
 
 /// Population as percentage of image area
-const P: f32 = 0.005;
+const P: f32 = 0.15;
 /// Diffusion kernel size
 const DIFF_K: u8 = 3;
 /// Trail-map chemoattractant diffusion decay factor
